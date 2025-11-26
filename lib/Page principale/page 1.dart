@@ -177,7 +177,6 @@ class _Page1State extends State<Page1> {
             right: 13,
             bottom: bottomNavTotalHeight, // Positionné juste au-dessus de ta nav bar
             child: const MiniPlayer(),
-
           ),
           // --- NavBar Glass ---
           Positioned(

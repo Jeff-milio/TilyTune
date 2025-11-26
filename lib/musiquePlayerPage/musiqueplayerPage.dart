@@ -2,13 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:just_audio/just_audio.dart';
 
-/// Singleton global pour éviter les crashes
-import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
-
-import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
-
 class AudioService {
   static final AudioPlayer player = AudioPlayer();
 
@@ -54,6 +47,8 @@ class _MusicPlayerPageState extends State<MusicPlayerPage> {
 // Dans _MusicPlayerPageState
 
 // DANS MusicPlayerPage.dart
+
+  // DANS MusicPlayerPage.dart
 
   Future<void> _setupPlayer() async {
     try {
