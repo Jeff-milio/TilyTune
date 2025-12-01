@@ -110,7 +110,7 @@ class _ParametreScreenState extends State<Parametre> {
                       (route) => false, // Efface toutes les routes
                 );
               },
-              child: const Text('Déconnexion', style: TextStyle(color: Colors.redAccent)),
+              child: const Text('Déconnexion', style: TextStyle(color: Color(0xFFFFE3BB))),
             ),
           ],
         );
@@ -124,7 +124,8 @@ class _ParametreScreenState extends State<Parametre> {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           backgroundColor: darkBackground,
-          title: const Text("Supprimer le compte", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          title: const Text("Supprimer le compte", style: TextStyle(color: Color(
+              0xFF851313), fontWeight: FontWeight.bold)),
           content: const Text(
             "ATTENTION: Cette action est irréversible. Voulez-vous vraiment supprimer votre compte ? Toutes les données seront perdues.",
             style: TextStyle(color: Colors.white70),
@@ -215,7 +216,8 @@ class _ParametreScreenState extends State<Parametre> {
             _buildSettingsTile(
               icon: Icons.logout,
               title: "Déconnexion",
-              color: const Color(0xFFEB5353),
+              color: const Color(0xFFFFE3BB)
+              ,
               onTap: () => _logout(context),
             ),
             _buildSettingsTile(

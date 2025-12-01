@@ -17,12 +17,6 @@ class Moi extends StatefulWidget {
 }
 
 class _MoiState extends State<Moi> {
-  void moveTrackToTop(Map<String, String> track) {
-    setState(() {
-      recentTracks.remove(track); // Supprime de sa position actuelle
-      recentTracks.insert(0, track); // Ajoute à la première position
-    });
-  }
 
   XFile? _image;
 
@@ -275,77 +269,85 @@ class _MoiState extends State<Moi> {
     );
   }
 
-  Widget _buildRecentTracksScrollable(List<Map<String, String>> list) {
+  Widget _buildRecentTracksScrollable(List<Map<String, String>> recentTracks) {
     return Container(
       height: 300,
-      child: ListView.builder(
-        padding: const EdgeInsets.only(bottom: 100),
-        shrinkWrap: false,
-        physics: BouncingScrollPhysics(),
-        itemCount: list.length,
-        itemBuilder: (context, index) {
-          final track = list[index];
+      // Ici on écoute les changements en temps réel
+      child: ValueListenableBuilder<List<Map<String, String>>>(
+        valueListenable: RecentTracksManager.tracksNotifier,
+        builder: (context, tracks, child) {
 
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque, // 🔥 capture tout le row
-            onTap: () {
-              moveTrackToTop(track);
-              PersistentNavBarNavigator.pushNewScreen(
-                context,
-                screen: MusicPlayerPage(track: track, tracks: [],),
-                withNavBar: false,
-                pageTransitionAnimation: PageTransitionAnimation.slideUp,
+          if (tracks.isEmpty) {
+            return const Center(child: Text("Aucune écoute récente", style: TextStyle(color: Colors.white54)));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.only(bottom: 100),
+            shrinkWrap: false,
+            physics: const BouncingScrollPhysics(),
+            itemCount: tracks.length,
+            itemBuilder: (context, index) {
+              final track = tracks[index];
+              return StatefulBuilder(
+                builder: (context, setState) {
+                  bool isPressed = false;
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (_) => setState(() => isPressed = true),
+                    onTapCancel: () => setState(() => isPressed = false),
+                    onTapUp: (_) {
+                      setState(() => isPressed = false);
+
+                      // Pas besoin d'appeler moveTrackToTop manuellement ici.
+                      // MusicPlayerPage le fera via son initState/_setupPlayer.
+
+                      PersistentNavBarNavigator.pushNewScreen(
+                        context,
+                        screen: MusicPlayerPage(track: track, tracks: tracks), // On passe la liste complète
+                        withNavBar: false,
+                        pageTransitionAnimation: PageTransitionAnimation.slideUp,
+                      );
+                    },
+                    child: AnimatedScale(
+                      duration: const Duration(milliseconds: 120),
+                      scale: isPressed ? 0.95 : 1.0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.asset(
+                                track['cover'] ?? 'assets/images/placeholder.jpg',
+                                width: 50, height: 50, fit: BoxFit.cover,
+                                errorBuilder: (c,e,s) => Container(color: Colors.grey, width: 50, height: 50),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(track['title'] ?? 'Titre', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  Text(track['artist'] ?? 'Artiste', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.play_circle_outline, color: Colors.white, size: 27),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
               );
             },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.asset(
-                      track['cover']!,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-
-                  // 🎵 TITRE + ARTISTE
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          track['title']!,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          track['artist']!,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // ⬇️ Icône téléchargement (ne bloque plus le clic)
-                  Icon(Icons.file_download_outlined,
-                      color: Colors.white, size: 27),
-                ],
-              ),
-            ),
           );
         },
       ),
     );
   }
+}
 
 
   // Widget pour les telechargement
@@ -387,7 +389,6 @@ class _MoiState extends State<Moi> {
       ),
     );
   }
-}
 
 // option pour favoris
 Widget _buildfavoris(

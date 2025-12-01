@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:just_audio/just_audio.dart';
 
+import '../data.dart';
+
 class AudioService {
   static final AudioPlayer player = AudioPlayer();
 
@@ -42,32 +44,34 @@ class _MusicPlayerPageState extends State<MusicPlayerPage> {
     _setupPlayer();
   }
 
+  // ... imports
+// Assurez-vous d'importer data.dart ou là où vous avez mis RecentTracksManager
+// ... imports
+// Assurez-vous d'importer data.dart ou là où vous avez mis RecentTracksManager
+
   Future<void> _setupPlayer() async {
     try {
       final oldTrack = AudioService.currentTrackNotifier.value;
       final newTrack = widget.track;
 
-      // 1. Vérification : Est-ce exactement la même musique (Audio + Titre) ?
+      // --- AJOUT ICI ---
+      // Ajouter la musique aux "Récemment écoutés" dès qu'on lance le setup
+      RecentTracksManager.addTrack(newTrack);
+      // -----------------
+
       bool isSameSong = (oldTrack != null &&
           oldTrack['audio'] == newTrack['audio']);
 
       if (isSameSong) {
-        // Si c'est la même, on s'assure juste qu'elle joue
         if (!AudioService.player.playing) {
           AudioService.player.play();
         }
-        // On met à jour l'affichage au cas où
         AudioService.currentTrackNotifier.value = newTrack;
         return;
       }
 
-      // 2. C'est une NOUVELLE musique : On arrête tout et on recharge
       await AudioService.player.stop();
-
-      // Mise à jour de l'UI (Le MiniPlayer changera ici)
       AudioService.currentTrackNotifier.value = newTrack;
-
-      // Chargement et lecture
       await AudioService.player.setAsset(newTrack['audio']!.trim());
       AudioService.player.play();
 

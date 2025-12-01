@@ -22,28 +22,6 @@ class Monplaylist extends StatefulWidget {
 
 class _PlaylistPageState extends State<Monplaylist> {
   // Couleur personnalisée : Rouge Bordeaux Sombre
-  final List<Playlist> playlists = [
-    Playlist(
-      title: "Soirée Jazz & Vin",
-      imageUrl: "https://picsum.photos/200/200?random=10",
-      songs: ["Take Five", "So What", "My Favorite Things"],
-    ),
-    Playlist(
-      title: "Rock Années 80",
-      imageUrl: "https://picsum.photos/200/200?random=20",
-      songs: ["Back in Black", "Sweet Child O' Mine", "Jump"],
-    ),
-    Playlist(
-      title: "Workout Intense",
-      imageUrl: "https://picsum.photos/200/200?random=30",
-      songs: ["Lose Yourself", "Till I Collapse", "Numb"],
-    ),
-    Playlist(
-      title: "Nuit Calme",
-      imageUrl: "https://picsum.photos/200/200?random=40",
-      songs: ["River Flows in You", "Clair de Lune"],
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -92,18 +70,6 @@ class _PlaylistPageState extends State<Monplaylist> {
                   ),
                 ),
               ),
-            ),
-          ),
-
-          // --- Liste des Playlists ---
-          Expanded(
-            child: ListView.builder(
-              itemCount: playlists.length,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemBuilder: (context, index) {
-                final playlist = playlists[index];
-                return _buildPlaylistCard(context, playlist);
-              },
             ),
           ),
         ],

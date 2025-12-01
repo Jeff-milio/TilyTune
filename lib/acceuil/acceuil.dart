@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../AlbumPage/albumpage.dart';
-import '../data.dart'; // Supposons que albums et recentTracks sont ici
+import '../data.dart'; // Assurez-vous que RecentTracksManager est bien ici
 import '../free/free.dart';
 import '../musiquePlayerPage/musiqueplayerPage.dart';
 import '../profil/profil.dart';
@@ -19,12 +19,9 @@ class acceuil extends StatefulWidget {
 }
 
 class _acceuilState extends State<acceuil> {
-  void moveTrackToTop(Map<String, String> track) {
-    setState(() {
-      recentTracks.remove(track);
-      recentTracks.insert(0, track);
-    });
-  }
+
+  // NOTE: J'ai supprimé 'moveTrackToTop' ici car c'est maintenant géré
+  // automatiquement par RecentTracksManager et MusicPlayerPage.
 
   final items = [
     Image.asset('assets/images/charte.g_1.jpg'),
@@ -34,13 +31,10 @@ class _acceuilState extends State<acceuil> {
 
   @override
   Widget build(BuildContext context) {
-// DANS acceuil.dart, à l'intérieur du widget build
-
-// ...
     final List<Map<String, dynamic>> newsList = nouveautesData['Nouveautés']!;
     List<Map<String, dynamic>> featuredList = [];
 
-// Prend les 2 premiers éléments de newsList (s'ils existent).
+    // Prend les 2 premiers éléments
     featuredList.addAll(
         newsList.sublist(0, newsList.length > 2 ? 2 : newsList.length));
 
@@ -105,9 +99,7 @@ class _acceuilState extends State<acceuil> {
                       return Stack(
                         children: [
                           Positioned(
-                            left: 0,
-                            right: 0,
-                            top: 8,
+                            left: 0, right: 0, top: 8,
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(10),
                               child: item,
@@ -122,9 +114,8 @@ class _acceuilState extends State<acceuil> {
                     child: AnimatedSmoothIndicator(
                       activeIndex: CurentIndex,
                       count: items.length,
-                      effect: WormEffect(
-                        dotHeight: 7,
-                        dotWidth: 8,
+                      effect: const WormEffect(
+                        dotHeight: 7, dotWidth: 8,
                         dotColor: Colors.white70,
                         activeDotColor: Color(0xFFE8C8A2),
                         spacing: 9,
@@ -136,27 +127,22 @@ class _acceuilState extends State<acceuil> {
               ),
 
               // --- RECOMMANDÉ ---
-              _buildSectionHeader(
-                'Recommandé pour vous',
-              ),
-              // Ici on garde l'ancienne liste "albums" car vous n'avez pas fourni de nouvelles data pour Recommandé
+              _buildSectionHeader('Recommandé pour vous'),
               _buildFeaturedAlbumList(featuredList),
 
-              // --- NOUVEAUTÉS (MODIFIÉ) ---
+              // --- NOUVEAUTÉS ---
               _buildSectionHeader(
                 'Nouveautés',
                 onVoirTout: () {
-                  // Attention: il faudra adapter la page 'nouveaute' pour accepter le format List<Map<String, dynamic>>
-                  // Pour l'instant on garde l'ancien lien ou on adapte plus tard
                   Navigator.push(context, MaterialPageRoute(builder: (_) => nouveaute(albums: albums)));
                 },
               ),
-              // C'EST ICI LE CHANGEMENT PRINCIPAL : On utilise newsList
               _buildHorizontalAlbumList(newsList),
 
               // --- RÉCEMMENT ÉCOUTÉES ---
               _buildSectionHeader('Musiques Récemment Écoutées'),
-              _buildRecentTracksScrollable(recentTracks),
+              // On n'a plus besoin de passer de liste en paramètre, il utilise le Manager interne
+              _buildRecentTracksScrollable(),
               const SizedBox(height: 50),
             ],
           ),
@@ -188,8 +174,7 @@ class _acceuilState extends State<acceuil> {
     );
   }
 
-  // --- MODIFICATION: Accepte List<Map<String, dynamic>> ---
-  // --- MODIFICATION : Extraction sécurisée des musiques ---
+  // --- WIDGET LISTE HORIZONTALE (ALBUMS) ---
   Widget _buildHorizontalAlbumList(List<Map<String, dynamic>> list) {
     return SizedBox(
       height: 240.0,
@@ -198,14 +183,10 @@ class _acceuilState extends State<acceuil> {
         itemCount: list.length,
         itemBuilder: (context, index) {
           final album = list[index];
-
-          // 1. CORRECTION MAJEURE ICI : Conversion sécurisée des pistes
-          // On initialise une liste vide par défaut
           List<Map<String, String>> tracks = [];
 
           if (album['tracks'] != null) {
             try {
-              // On force la conversion de chaque item en Map<String, String>
               tracks = (album['tracks'] as List).map((item) {
                 return Map<String, String>.from(item as Map);
               }).toList();
@@ -214,7 +195,6 @@ class _acceuilState extends State<acceuil> {
             }
           }
 
-          // 2. Gestion de l'image de couverture
           String coverPath = album['cover'] ?? '';
           if (coverPath.isEmpty && tracks.isNotEmpty) {
             coverPath = tracks[0]['cover'] ?? '';
@@ -225,16 +205,13 @@ class _acceuilState extends State<acceuil> {
             artist: album['artist'] ?? 'Inconnu',
             coverPath: coverPath,
             onTap: () {
-              // 3. On vérifie qu'on envoie bien les tracks
-              print("Ouverture album avec ${tracks.length} musiques"); // Pour débugger
-
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) =>
                     AlbumPage(
                       title: album['title'] ?? 'Titre',
                       artist: album['artist'] ?? 'Artiste',
-                      tracks: tracks, // C'est ici que les musiques passent !
+                      tracks: tracks,
                       album: {
                         'title': album['title'] ?? '',
                         'artist': album['artist'] ?? '',
@@ -254,11 +231,8 @@ class _acceuilState extends State<acceuil> {
       ),
     );
   }
-  // ... (Le reste du code: _buildFeaturedAlbumList, _buildRecentTracksScrollable, _AlbumCard, _FeaturedAlbumCard reste identique)
-  // Je remets _FeaturedAlbumCard et _AlbumCard pour que le code soit copiable/collable sans erreur
 
-// DANS acceuil.dart
-
+  // --- WIDGET FEATURED ---
   Widget _buildFeaturedAlbumList(List<Map<String, dynamic>> list) {
     return SizedBox(
       height: 280.0,
@@ -267,8 +241,6 @@ class _acceuilState extends State<acceuil> {
         itemCount: list.length,
         itemBuilder: (context, index) {
           final album = list[index];
-
-          // Extraction sécurisée des pistes (identique à _buildHorizontalAlbumList)
           List<Map<String, String>> tracks = [];
           if (album['tracks'] != null) {
             try {
@@ -276,11 +248,10 @@ class _acceuilState extends State<acceuil> {
                   .map((item) => Map<String, String>.from(item as Map))
                   .toList();
             } catch (e) {
-              print("Erreur de lecture des pistes dans Featured : $e");
+              print("Erreur pistes Featured : $e");
             }
           }
 
-          // Détermination de la couverture (identique à _buildHorizontalAlbumList)
           String coverPath = album['cover'] ?? '';
           if (coverPath.isEmpty && tracks.isNotEmpty) {
             coverPath = tracks[0]['cover'] ?? '';
@@ -291,14 +262,13 @@ class _acceuilState extends State<acceuil> {
             artist: album['artist'] ?? 'Inconnu',
             coverPath: coverPath,
             onTap: () {
-              // Navigation vers AlbumPage avec les pistes extraites
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) =>
                     AlbumPage(
                       title: album['title'] ?? 'Titre',
                       artist: album['artist'] ?? 'Artiste',
-                      tracks: tracks, // ON PASSE LES PISTES
+                      tracks: tracks,
                       album: {
                         'title': album['title'] ?? '',
                         'artist': album['artist'] ?? '',
@@ -319,59 +289,78 @@ class _acceuilState extends State<acceuil> {
     );
   }
 
-  Widget _buildRecentTracksScrollable(List<Map<String, String>> list) {
+  // --- WIDGET RECENT TRACKS (CORRIGÉ & DYNAMIQUE) ---
+  Widget _buildRecentTracksScrollable() {
     return Container(
       height: 300,
-      child: ListView.builder(
-        padding: const EdgeInsets.only(bottom: 100),
-        shrinkWrap: false,
-        physics: BouncingScrollPhysics(),
-        itemCount: list.length,
-        itemBuilder: (context, index) {
-          final track = list[index];
-          return StatefulBuilder(
-            builder: (context, setState) {
-              bool isPressed = false;
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (_) => setState(() => isPressed = true),
-                onTapCancel: () => setState(() => isPressed = false),
-                onTapUp: (_) {
-                  setState(() => isPressed = false);
-                  moveTrackToTop(track);
-                  PersistentNavBarNavigator.pushNewScreen(
-                    context,
-                    screen: MusicPlayerPage(track: track, tracks: [],),
-                    withNavBar: false,
-                    pageTransitionAnimation: PageTransitionAnimation.slideUp,
+      // Ici on écoute les changements en temps réel
+      child: ValueListenableBuilder<List<Map<String, String>>>(
+        valueListenable: RecentTracksManager.tracksNotifier,
+        builder: (context, tracks, child) {
+
+          if (tracks.isEmpty) {
+            return const Center(child: Text("Aucune écoute récente", style: TextStyle(color: Colors.white54)));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.only(bottom: 100),
+            shrinkWrap: false,
+            physics: const BouncingScrollPhysics(),
+            itemCount: tracks.length,
+            itemBuilder: (context, index) {
+              final track = tracks[index];
+              return StatefulBuilder(
+                builder: (context, setState) {
+                  bool isPressed = false;
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (_) => setState(() => isPressed = true),
+                    onTapCancel: () => setState(() => isPressed = false),
+                    onTapUp: (_) {
+                      setState(() => isPressed = false);
+
+                      // Pas besoin d'appeler moveTrackToTop manuellement ici.
+                      // MusicPlayerPage le fera via son initState/_setupPlayer.
+
+                      PersistentNavBarNavigator.pushNewScreen(
+                        context,
+                        screen: MusicPlayerPage(track: track, tracks: tracks), // On passe la liste complète
+                        withNavBar: false,
+                        pageTransitionAnimation: PageTransitionAnimation.slideUp,
+                      );
+                    },
+                    child: AnimatedScale(
+                      duration: const Duration(milliseconds: 120),
+                      scale: isPressed ? 0.95 : 1.0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.asset(
+                                track['cover'] ?? 'assets/images/placeholder.jpg',
+                                width: 50, height: 50, fit: BoxFit.cover,
+                                errorBuilder: (c,e,s) => Container(color: Colors.grey, width: 50, height: 50),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(track['title'] ?? 'Titre', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  Text(track['artist'] ?? 'Artiste', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.play_circle_outline, color: Colors.white, size: 27),
+                          ],
+                        ),
+                      ),
+                    ),
                   );
                 },
-                child: AnimatedScale(
-                  duration: Duration(milliseconds: 120),
-                  scale: isPressed ? 0.95 : 1.0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(track['cover']!, width: 50, height: 50, fit: BoxFit.cover),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(track['title']!, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                              Text(track['artist']!, style: TextStyle(color: Colors.white70, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.file_download_outlined, color: Colors.white, size: 27),
-                      ],
-                    ),
-                  ),
-                ),
               );
             },
           );
@@ -381,7 +370,8 @@ class _acceuilState extends State<acceuil> {
   }
 }
 
-// --- WIDGETS CARDS (Identiques à votre code) ---
+// --- LES WIDGETS CARDS RESTENT INCHANGÉS ---
+
 class _AlbumCard extends StatelessWidget {
   final String title;
   final String artist;
@@ -418,14 +408,14 @@ class _AlbumCard extends StatelessWidget {
                     width: coverSize,
                     height: coverSize,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => SizedBox(width: coverSize, height: coverSize, child: Container(color: Colors.grey[800], child: Icon(Icons.music_note, color: Colors.white))),
+                    errorBuilder: (context, error, stackTrace) => SizedBox(width: coverSize, height: coverSize, child: Container(color: Colors.grey[800], child: const Icon(Icons.music_note, color: Colors.white))),
                   ),
                 ),
                 Positioned(
                   bottom: 0, left: 0, right: 0, height: 60,
                   child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8.0)),
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(8.0)),
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -438,7 +428,7 @@ class _AlbumCard extends StatelessWidget {
                   bottom: 2, right: 5,
                   child: Container(
                     height: 35, width: 35,
-                    decoration: BoxDecoration(color: Color(0xFF295A65), shape: BoxShape.circle),
+                    decoration: const BoxDecoration(color: Color(0xFF295A65), shape: BoxShape.circle),
                     child: IconButton(
                       icon: const Icon(Icons.file_download_outlined, color: Colors.white, size: 25),
                       onPressed: onDownload,
@@ -453,7 +443,7 @@ class _AlbumCard extends StatelessWidget {
                     width: 50, height: 50,
                     child: IconButton(
                       icon: const Icon(Icons.video_library_outlined, color: Colors.white, size: 35),
-                      onPressed: onTap, // Changé pour appeler onTap (donc ouvrir l'album)
+                      onPressed: onTap,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -507,8 +497,8 @@ class _FeaturedAlbumCard extends StatelessWidget {
                 Positioned(
                   bottom: 0, left: 0, right: 0, height: 60,
                   child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8.0)),
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(8.0)),
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -521,7 +511,7 @@ class _FeaturedAlbumCard extends StatelessWidget {
                   bottom: 3, right: 5,
                   child: Container(
                     width: 40, height: 40,
-                    decoration: BoxDecoration(color: Color(0xFF295A65), shape: BoxShape.circle),
+                    decoration: const BoxDecoration(color: Color(0xFF295A65), shape: BoxShape.circle),
                     child: IconButton(
                       icon: const Icon(Icons.file_download_outlined, color: Colors.white, size: 30),
                       onPressed: onDownload,
