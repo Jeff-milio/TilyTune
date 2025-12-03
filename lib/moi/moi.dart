@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // 💡 NOUVEL IMPORT SUPABASE
 import 'package:tilytune1/moi/Favoris.dart';
 
 import '../data.dart';
@@ -17,9 +18,53 @@ class Moi extends StatefulWidget {
 }
 
 class _MoiState extends State<Moi> {
-
+  // 💡 Variables d'état pour les données Supabase
+  String _totem = 'Chargement...';
+  String _emailUsername = '@...'; // Utilisé comme pseudo
   XFile? _image;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  // 💡 Fonction de chargement des données de profil
+  Future<void> _loadProfile() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+
+      if (userId == null) {
+        throw Exception('Utilisateur non connecté');
+      }
+
+      // Récupération des données du profil depuis la table 'profiles'
+      final response = await Supabase.instance.client
+          .from('profiles')
+          .select('totem, email')
+          .eq('id', userId)
+          .single();
+
+      if (mounted) {
+        setState(() {
+          _totem = response['totem'] as String;
+          // Utilisation de la première partie de l'email comme pseudo temporaire
+          String fullEmail = response['email'] as String;
+          _emailUsername = '@${fullEmail.split('@').first}';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _totem = 'Erreur Profil';
+          _emailUsername = '@Utilisateur';
+        });
+        print('Erreur de chargement du profil: $e');
+      }
+    }
+  }
+
+  // --- LOGIQUE PHOTO ---
   Future pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? img = await picker.pickImage(source: ImageSource.gallery);
@@ -28,8 +73,10 @@ class _MoiState extends State<Moi> {
       setState(() {
         _image = img;
       });
+      // TODO: Ajouter la logique pour UPLOADER l'image dans Supabase Storage ici
     }
   }
+  // --- FIN LOGIQUE PHOTO ---
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +85,7 @@ class _MoiState extends State<Moi> {
       body: Stack(
         children: [
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
                 colors: [
@@ -60,7 +107,7 @@ class _MoiState extends State<Moi> {
                 backgroundColor: Colors.black,
                 flexibleSpace: FlexibleSpaceBar(
                   background: Container(
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -87,17 +134,17 @@ class _MoiState extends State<Moi> {
                                 GestureDetector(
                                   onTap: pickImage,
                                   child: CircleAvatar(
-                                    backgroundColor: Color(0xB5FFFFFF),
+                                    backgroundColor: const Color(0xB5FFFFFF),
                                     radius: 55,
                                     backgroundImage: _image != null
                                         ? FileImage(File(_image!.path))
                                         : null,
                                     child: _image == null
                                         ? const Icon(
-                                            Icons.person,
-                                            size: 50,
-                                            color: Color(0xFF000000),
-                                          )
+                                      Icons.person,
+                                      size: 50,
+                                      color: Color(0xFF000000),
+                                    )
                                         : null,
                                   ),
                                 ),
@@ -125,23 +172,25 @@ class _MoiState extends State<Moi> {
                             ),
                           ),
 
-                          // ---- NOM + USERNAME ----
+                          // ---- NOM + USERNAME (LIÉ À SUPABASE) ----
                           const SizedBox(width: 15),
                           Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
+                              // 💡 Affichage du Totem/Nom
                               Text(
-                                'Nigara Manoa',
-                                style: TextStyle(
+                                _totem,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
+                              // 💡 Affichage du pseudo dérivé de l'email
                               Text(
-                                '@ManoaNigara',
-                                style: TextStyle(
+                                _emailUsername,
+                                style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 16,
                                 ),
@@ -167,24 +216,22 @@ class _MoiState extends State<Moi> {
                           context,
                           Icons.file_download_outlined,
                           'Téléchargements',
-                          () {},
+                              () {},
                         ),
 
                         _buildfavoris(
                           context,
                           Icons.favorite_border,
                           'Mes Favoris',
-                          () {},
+                              () {},
                         ),
-                        SizedBox(height: 5),
+                        const SizedBox(height: 5),
                         _buildGiantPlaylistButton(context),
-                        SizedBox(height: 30),
+                        const SizedBox(height: 30),
 
                         _buildSectionHeader('Musiques Récemment Écoutées'),
-                        // pas de bouton
                         _buildRecentTracksScrollable(recentTracks),
                         const SizedBox(height: 100),
-                        // LE NOUVEAU GRAND BOUTON PLAYLIST
                       ],
                     ),
                   ),
@@ -196,6 +243,8 @@ class _MoiState extends State<Moi> {
       ),
     );
   }
+
+  // ... (Le reste des widgets utilitaires _buildGiantPlaylistButton, _buildSectionHeader, etc. sont inchangés)
 
   Widget _buildGiantPlaylistButton(BuildContext context) {
     return GestureDetector(
@@ -212,7 +261,7 @@ class _MoiState extends State<Moi> {
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           // flou glassmorphism
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2), // couleur semi-transparente
               borderRadius: BorderRadius.circular(20),
@@ -230,8 +279,8 @@ class _MoiState extends State<Moi> {
                     fit: BoxFit.contain,
                   ),
                 ),
-                SizedBox(width: 2),
-                Text(
+                const SizedBox(width: 2),
+                const Text(
                   'Mon Playlist',
                   style: TextStyle(
                     fontFamily: 'Momotrust',
@@ -350,56 +399,56 @@ class _MoiState extends State<Moi> {
 }
 
 
-  // Widget pour les telechargement
-  Widget _buildtelechargement(
+// Widget pour les telechargement
+Widget _buildtelechargement(
     BuildContext context,
     IconData icon,
     String title,
     VoidCallback onTap,
-  ) {
-    return Card(
-      color: Colors.grey[900],
-      margin: EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () {
-          // Naviguer vers une autre page
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => Telechargement()),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
-          child: Row(
-            children: [
-              Icon(icon, color: Colors.white, size: 28),
-              SizedBox(width: 20),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
+    ) {
+  return Card(
+    color: Colors.grey[900],
+    margin: const EdgeInsets.only(bottom: 12),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: InkWell(
+      onTap: () {
+        // Naviguer vers une autre page
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => Telechargement()),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 28),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 18),
               ),
-              Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 20),
-            ],
-          ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 20),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
 // option pour favoris
 Widget _buildfavoris(
-  BuildContext context,
-  IconData icon,
-  String title,
-  VoidCallback onTap,
-) {
+    BuildContext context,
+    IconData icon,
+    String title,
+    VoidCallback onTap,
+    ) {
   return Card(
     color: Colors.grey[900],
-    margin: EdgeInsets.only(bottom: 12),
+    margin: const EdgeInsets.only(bottom: 12),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     child: InkWell(
       onTap: () {
@@ -415,14 +464,14 @@ Widget _buildfavoris(
         child: Row(
           children: [
             Icon(icon, color: Colors.white, size: 28),
-            SizedBox(width: 20),
+            const SizedBox(width: 20),
             Expanded(
               child: Text(
                 title,
-                style: TextStyle(color: Colors.white, fontSize: 18),
+                style: const TextStyle(color: Colors.white, fontSize: 18),
               ),
             ),
-            Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 20),
+            const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 20),
           ],
         ),
       ),

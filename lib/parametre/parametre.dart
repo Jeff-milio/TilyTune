@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // NOUVEL IMPORT SUPABASE
 import 'package:tilytune1/CRUD/Crud_Users/signup_page.dart';
-
 import '../CRUD/Crud_Users/loginpage.dart';
-import '../Page principale/page 1.dart';
-
-// NOTE IMPORTANTE :
-// Assurez-vous d'importer correctement Page1.dart dans votre projet réel.
-// Par exemple : import '../../Page principale/page 1.dart';
-// J'ai inclus une version fictive de Page1 ci-dessous pour rendre le code compilable.
 
 // ------------------------------------
 // 1. La page d'accueil des paramètres
@@ -37,6 +31,7 @@ class _ParametreScreenState extends State<Parametre> {
   // --- Fonctions d'action ---
 
   void _changeLanguage(BuildContext context) {
+    // ... (Code inchangé pour changer de langue)
     setState(() {
       isMalagasy = !isMalagasy;
     });
@@ -58,6 +53,7 @@ class _ParametreScreenState extends State<Parametre> {
   }
 
   void _inviteFriends(BuildContext context) {
+    // ... (Code inchangé pour Inviter des amis)
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -79,7 +75,7 @@ class _ParametreScreenState extends State<Parametre> {
     );
   }
 
-  // 3. Déconnexion (CORRIGÉE pour effacer la NavBar)
+  // 3. Déconnexion (UTILISE MAINTENANT SUPABASE)
   void _logout(BuildContext context) {
     showDialog(
       context: context,
@@ -97,18 +93,32 @@ class _ParametreScreenState extends State<Parametre> {
               child: const Text('Annuler', style: TextStyle(color: Colors.white70)),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
+              onPressed: () async {
+                Navigator.of(dialogContext).pop(); // Ferme la boîte de dialogue
 
-                // CODE DE DÉCONNEXION RÉELLEMENT IMPORTANT
-                print("ACTION: Utilisateur déconnecté. Redirection vers LoginPage.");
+                // --- ACTION SUPABASE : DÉCONNEXION ---
+                try {
+                  await Supabase.instance.client.auth.signOut();
+                  print("ACTION: Utilisateur déconnecté de Supabase. Redirection vers LoginPage.");
 
-                // Utilisation de rootNavigator: true pour naviguer
-                // au-delà de la structure de navigation imbriquée (comme la NavBar).
-                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                      (route) => false, // Efface toutes les routes
-                );
+                  // Redirection vers la page de connexion, effaçant l'historique de navigation
+                  if (mounted) {
+                    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const LoginPage()),
+                          (route) => false, // Efface toutes les routes
+                    );
+                  }
+                } catch (e) {
+                  print("Erreur lors de la déconnexion: $e");
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Échec de la déconnexion. Veuillez réessayer.", style: TextStyle(color: Colors.white)),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
               },
               child: const Text('Déconnexion', style: TextStyle(color: Color(0xFFFFE3BB))),
             ),
@@ -118,6 +128,7 @@ class _ParametreScreenState extends State<Parametre> {
     );
   }
 
+  // 4. Suppression du compte (UTILISE MAINTENANT SUPABASE)
   void _deleteAccount(BuildContext context) {
     showDialog(
       context: context,
@@ -136,19 +147,72 @@ class _ParametreScreenState extends State<Parametre> {
               child: const Text('Annuler', style: TextStyle(color: Colors.white70)),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
+              onPressed: () async {
+                Navigator.of(dialogContext).pop(); // Ferme la boîte de dialogue
 
-                // CODE DE DÉCONNEXION RÉELLEMENT IMPORTANT
-                print("ACTION: Utilisateur déconnecté. Redirection vers LoginPage.");
+                // --- ACTION SUPABASE : SUPPRESSION DE L'UTILISATEUR ET DÉCONNEXION ---
+                try {
+                  // NOTE TRÈS IMPORTANTE:
+                  // La suppression d'un utilisateur depuis le client nécessite souvent des politiques RLS
+                  // très spécifiques (et risquées) ou l'utilisation d'une Function Edge.
+                  // Dans le cas d'une application client-only Flutter, la solution
+                  // la plus courante et sécurisée est de DÉCONNECTER l'utilisateur après
+                  // avoir DÉCLENCHÉ la suppression de son profil.
 
-                // Utilisation de rootNavigator: true pour naviguer
-                // au-delà de la structure de navigation imbriquée (comme la NavBar).
-                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const SignupPage()),
-                      (route) => false, // Efface toutes les routes
-                );
-                print("ACTION: Compte utilisateur supprimé.");
+                  // 1. SUPPRIMER LES DONNÉES DU PROFIL (si vous n'avez pas de RLS en CASCADE DELETE)
+                  // On suppose que la suppression du profil est autorisée par RLS pour l'utilisateur actuel.
+                  final userId = Supabase.instance.client.auth.currentUser?.id;
+
+                  if (userId != null) {
+                    await Supabase.instance.client
+                        .from('profiles')
+                        .delete()
+                        .eq('id', userId);
+                    print("ACTION: Profil utilisateur supprimé dans 'profiles'.");
+
+                    // 2. Supprimer l'utilisateur de l'authentification (Cette action est plus complexe côté client)
+                    // Supabase ne fournit pas de méthode simple côté client pour qu'un utilisateur
+                    // se supprime lui-même du système Auth pour des raisons de sécurité.
+                    // Pour un projet réel, vous devriez utiliser une Function Edge ou une
+                    // base de données trigger qui supprime l'utilisateur Auth après
+                    // la suppression de son profil.
+                    //
+                    // Pour la SIMULATION côté client, nous allons seulement déconnecter
+                    // et rediriger, en comptant sur la Function Edge/Trigger pour le nettoyage final.
+                  }
+
+
+                  await Supabase.instance.client.auth.signOut(); // Déconnexion
+                  print("ACTION: Utilisateur déconnecté. Redirection vers SignupPage.");
+
+                  // Redirection vers la page d'inscription, effaçant l'historique
+                  if (mounted) {
+                    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const SignupPage()),
+                          (route) => false,
+                    );
+                  }
+                } on PostgrestException catch (e) {
+                  print("Erreur Postgrest lors de la suppression du profil: $e");
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Échec de la suppression du profil (RLS?).", style: TextStyle(color: Colors.white)),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  print("Erreur lors de la suppression du compte: $e");
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Échec de la suppression du compte. Vérifiez les RLS.", style: TextStyle(color: Colors.white)),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
               },
               child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
             ),
@@ -160,6 +224,7 @@ class _ParametreScreenState extends State<Parametre> {
 
   @override
   Widget build(BuildContext context) {
+    // ... (Reste de la méthode build inchangé)
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B0101),
@@ -259,6 +324,7 @@ class _ParametreScreenState extends State<Parametre> {
 // ------------------------------------
 // 2. La page "À propos" (AproposPage)
 // ------------------------------------
+// (Code inchangé)
 
 class AproposPage extends StatelessWidget {
   const AproposPage({super.key});
@@ -332,7 +398,3 @@ class AproposPage extends StatelessWidget {
     );
   }
 }
-
-// ------------------------------------
-// 3. Votre page de Connexion (LoginPage)
-// ------------------------------------

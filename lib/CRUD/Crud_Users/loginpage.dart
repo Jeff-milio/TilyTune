@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../Page principale/page 1.dart'; // Assurez-vous que cette importation est correcte
+import 'package:supabase_flutter/supabase_flutter.dart'; // Import Supabase
+import '../../Page principale/page 1.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,7 +13,9 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
+
   bool _isPasswordVisible = false;
+  bool _isLoading = false; // État de chargement
 
   @override
   void dispose() {
@@ -21,18 +24,55 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // Fonction appelée par le bouton SE CONNECTER
-  void _submitLogin() {
-    if (_formKey.currentState!.validate()) {
-      // Si les validations passent (email et mot de passe sont valides)
+  // --- LOGIQUE LOGIN SUPABASE ---
+  Future<void> _submitLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      // Ici, vous ajouteriez votre logique d'authentification réelle (Firebase, API, etc.)
+    setState(() {
+      _isLoading = true;
+    });
 
-      // Redirection vers Page1
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => Page1()),
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Connexion
+      await supabase.auth.signInWithPassword(
+        email: emailCtrl.text.trim(),
+        password: passCtrl.text.trim(),
       );
+
+      // Si aucune exception n'est levée, on est connecté
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Page1()),
+        );
+      }
+    } on AuthException catch (e) {
+      // Erreur de connexion (ex: mauvais mot de passe)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Une erreur est survenue lors de la connexion"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -91,13 +131,9 @@ class _LoginPageState extends State<LoginPage> {
 
                     // Email Login
                     TextFormField(
-                      // VALIDATEUR D'EMAIL EXISTANT
                       validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return "Email requis";
-                        // Vérification basique du format email (au moins un @ et un .)
-                        if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value))
-                          return "Email invalide";
+                        if (value == null || value.isEmpty) return "Email requis";
+                        if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) return "Email invalide";
                         return null;
                       },
                       controller: emailCtrl,
@@ -119,16 +155,11 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Password Login (VALIDATEUR AJOUTÉ)
+                    // Password Login
                     TextFormField(
-                      // VALIDATEUR DE MOT DE PASSE AJOUTÉ
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Mot de passe requis";
-                        }
-                        if (value.length < 6) {
-                          return "Le mot de passe doit contenir au moins 6 caractères";
-                        }
+                        if (value == null || value.isEmpty) return "Mot de passe requis";
+                        if (value.length < 6) return "Min. 6 caractères";
                         return null;
                       },
                       controller: passCtrl,
@@ -137,12 +168,10 @@ class _LoginPageState extends State<LoginPage> {
                       decoration: InputDecoration(
                         labelText: "Mot de passe",
                         labelStyle: const TextStyle(color: Colors.white70),
-                        prefixIcon: const Icon(Icons.lock_outline, color: Colors
-                            .white70),
+                        prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _isPasswordVisible ? Icons.visibility : Icons
-                                .visibility_off,
+                            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
                             color: Colors.white54,
                           ),
                           onPressed: () {
@@ -164,7 +193,9 @@ class _LoginPageState extends State<LoginPage> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          // Logique reset password ici si besoin
+                        },
                         child: const Text(
                             "Mot de passe oublié ?", style: TextStyle(
                             color: Colors.white54)),
@@ -173,7 +204,7 @@ class _LoginPageState extends State<LoginPage> {
 
                     const SizedBox(height: 20),
 
-                    // Bouton Login
+                    // Bouton Login avec Loading
                     SizedBox(
                       width: double.infinity,
                       height: 55,
@@ -184,9 +215,10 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                         ),
-                        // APPEL À LA FONCTION DE SOUMISSION AVEC VALIDATION
-                        onPressed: _submitLogin,
-                        child: const Text(
+                        onPressed: _isLoading ? null : _submitLogin,
+                        child: _isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
                           "SE CONNECTER",
                           style: TextStyle(fontSize: 18,
                               fontWeight: FontWeight.bold,
